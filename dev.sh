@@ -20,6 +20,22 @@ _setup () {
     overmind quit
     sleep 2
 }
+
+_open_url () {
+    if [[ ! -z "${DEFAULT_BROWSER}" ]]; then
+        $DEFAULT_BROWSER $url
+    elif type explorer.exe &> /dev/null; then
+        explorer.exe $url
+    fi
+}
+
+_create_url () {
+    if [ -f /etc/wsl.conf ]; then
+        echo "http://localhost:$WEBPORT"
+    else
+        echo "http://$(hostname -f):$WEBPORT"
+    fi
+}
 #}
 
 # Main tasks start
@@ -28,8 +44,10 @@ declare -A descriptions
 
 run () {
     _setup
-    printf "\n---\n webserver: http://$(hostname -f):$WEBPORT\n---\n"
+    url=$(_create_url)
+    printf "\n---\n webserver: $url\n---\n"
     overmind start -D
+    _open_url $url
 }
 descriptions["run"]="Start the webserver."
 tasks["run"]=run
