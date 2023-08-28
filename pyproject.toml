@@ -40,7 +40,7 @@ disallow_any_generics = true
 [tool.django-stubs]
 django_settings_module = "htmx_examples"
 
-[tool.poetry.dependencies]
+[tool.poetry.group.main.dependencies]
 python = "^3.10"
 django = "^4.2.3"
 django-htmx = "^1.16.0"
