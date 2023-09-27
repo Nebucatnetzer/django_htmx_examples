@@ -11,9 +11,6 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
 from pathlib import Path
-from socket import gethostname
-from socket import gethostbyname
-from socket import getfqdn
 
 import os
 
@@ -30,14 +27,7 @@ SECRET_KEY = "django-insecure-9+f744v*txazsa(8j#9du4p&x6%cvxyv+-)^v@h+a7kksn=9vh
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [
-    "localhost",
-    "127.0.0.1",
-    "0.0.0.0",
-    getfqdn(),
-    gethostname(),
-    gethostbyname(gethostname()),
-]
+ALLOWED_HOSTS = ["*"]
 
 # Application definition
 
