@@ -45,6 +45,7 @@ declare -A descriptions
 run() {
     _setup
     url=$(_create_url)
+    sudo iptables -I INPUT -p tcp --dport $WEBPORT -j ACCEPT
     printf "\n---\n webserver: $url\n---\n"
     overmind start -D
     _open_url $url
