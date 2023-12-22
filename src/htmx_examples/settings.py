@@ -52,6 +52,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+AUTH_USER_MODEL = "examples.User"
+
 ROOT_URLCONF = "htmx_examples.urls"
 
 TEMPLATES = [
