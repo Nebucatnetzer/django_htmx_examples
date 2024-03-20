@@ -51,7 +51,7 @@ psycopg2-binary = "^2.9.6"
 pylint = "^2.17.4"
 mypy = "^1.4.1"
 python-lsp-server = "^1.7.4"
-black = "^23.7.0"
+black = "^24.3.0"
 django-stubs = "^4.2.3"
 pylint-django = "^2.5.3"
 
