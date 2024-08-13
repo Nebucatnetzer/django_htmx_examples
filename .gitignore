@@ -253,3 +253,4 @@ result-*
 
 /.direnv/
 /static/
+/.devenv/
