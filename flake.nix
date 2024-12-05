@@ -1,42 +1,70 @@
 {
-  description = "";
+  description = "A Python API for various tools I use at work.";
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    flake-utils.url = "github:numtide/flake-utils";
+    systems.url = "github:nix-systems/default";
+    devenv.url = "github:cachix/devenv";
   };
-  outputs = { self, nixpkgs, flake-utils, poetry2nix }:
-    (flake-utils.lib.eachDefaultSystem (system:
-      let
-        pkgs = import nixpkgs {
-          inherit system;
-        };
-      in
-      rec {
-        devShells.default = pkgs.mkShell {
-          buildInputs = [
-            pkgs.poetry
-            pkgs.python311
-            pkgs.python311Packages.pip
-            pkgs.overmind
-            pkgs.postgresql_15
-            (pkgs.writeScriptBin "dev" "${builtins.readFile ./dev.sh}")
-          ];
-          # Put the venv on the repo, so direnv can access it
-          POETRY_VIRTUALENVS_IN_PROJECT = "true";
-          # Use python from path, so you can use a different version to the one
-          # bundled with poetry
-          POETRY_VIRTUALENVS_PREFER_ACTIVE_PYTHON = "true";
-          PYTHON_KEYRING_BACKEND = "keyring.backends.fail.Keyring";
-          LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
-            pkgs.stdenv.cc.cc
-            # Add any missing library needed You can use the nix-index package
-            # to locate them, e.g.
-            # nix-locate -w --top-level --at-root /lib/libudev.so.1
-          ];
-          shellHook = ''
-            export DJANGO_SETTINGS_MODULE=htmx_examples.settings
-          '';
-        };
-      }));
-}
+  nixConfig = {
+    extra-trusted-public-keys = "devenv.cachix.org-1:w1cLUi8dv3hnoSPGAuibQv+f9TZLr6cv/Hm9XgU50cw=";
+    extra-substituters = "https://devenv.cachix.org";
+  };
 
+  outputs = { self, nixpkgs, devenv, systems }@inputs:
+    let
+      forEachSystem = nixpkgs.lib.genAttrs (import systems);
+    in
+    {
+      packages = forEachSystem (system: {
+        devenv-up = self.devShells.${system}.default.config.procfileScript;
+      });
+      devShells = forEachSystem
+        (system:
+          let
+            pkgs = nixpkgs.legacyPackages.${system};
+          in
+          {
+            default = devenv.lib.mkShell {
+              inherit inputs pkgs;
+              modules = [
+                {
+                  packages = [
+                    (pkgs.writeScriptBin "dev" "${builtins.readFile ./dev.sh}")
+                  ];
+                  env = {
+                    DJANGO_SETTINGS_MODULE = "htmx_examples.settings";
+                    PYTHON_KEYRING_BACKEND = "keyring.backends.fail.Keyring";
+                    LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath [
+                      pkgs.stdenv.cc.cc
+                      # Add any missing library needed You can use the nix-index package
+                      # to locate them, e.g.
+                      # nix-locate -w --top-level --at-root /lib/libudev.so.1
+                    ];
+                  };
+                  languages.python = {
+                    enable = true;
+                    package = pkgs.python311;
+                    poetry = {
+                      activate.enable = true;
+                      enable = true;
+                      install.enable = true;
+                    };
+                  };
+                  process.implementation = "process-compose";
+                  process-managers.process-compose.enable = true;
+                  # https://github.com/cachix/devenv/blob/main/examples/process-compose/devenv.nix
+                  processes = {
+                    webserver.exec = "poetry run $DEVENV_ROOT/src/manage.py runserver 0.0.0.0:8000";
+                    setup.exec = "dev setup";
+                  };
+                  services.postgres = {
+                    enable = true;
+                    initialDatabases = [{ name = "django"; }];
+                    package = pkgs.postgresql_15;
+                  };
+                }
+              ];
+            };
+          });
+    };
+}
