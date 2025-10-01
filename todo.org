@@ -1,0 +1,5 @@
+* NEXT [#A] Refactor to use only Nixpkgs
+
+I'm fed up with poetry2nix and it is unmaintaind anyway.
+
+* NEXT Finish the first example
