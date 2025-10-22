@@ -29,14 +29,14 @@ setup() {
     pushd $(pwd)
     cd $DEVENV_ROOT
     if [ -f .direnv/first_run ]; then
-        poetry run ./src/manage.py collectstatic --noinput
-        poetry run ./src/manage.py makemigrations
-        poetry run ./src/manage.py migrate
+        ./src/manage.py collectstatic --noinput
+        ./src/manage.py makemigrations
+        ./src/manage.py migrate
     else
-        poetry run ./src/manage.py collectstatic --noinput
-        poetry run ./src/manage.py makemigrations
-        poetry run ./src/manage.py migrate
-        poetry run ./src/manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@example.com', 'password')"
+        ./src/manage.py collectstatic --noinput
+        ./src/manage.py makemigrations
+        ./src/manage.py migrate
+        ./src/manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@example.com', 'password')"
     fi
     touch .direnv/first_run
     popd
@@ -67,12 +67,6 @@ cleanall() {
 }
 descriptions["cleanall"]="Completly remove any files which are not checked into git."
 tasks["cleanall"]=cleanall
-
-update() {
-    poetry update
-}
-descriptions["update"]="Update the dependencies."
-tasks["update"]=update
 
 # only one task at a time
 if [ $# != 1 ]; then

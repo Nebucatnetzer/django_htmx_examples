@@ -1,82 +1,109 @@
-[tool.pylint]
-max-line-length = 88
-load-plugins = [
-    "pylint_django",
-]
-good-names = [
-    "pk",
-    "ip",
-]
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
-[tool.pylint."MESSAGES CONTROL"]
-disable = [
-    "missing-function-docstring",
-    "missing-class-docstring",
-    "missing-module-docstring",
-    "too-many-ancestors",
-]
-
-[tool.poetry]
-name = "django-htmx-examples"
+[project]
+name = "htmx_examples"
 version = "0.1.0"
+requires-python = ">=3.12"
 description = "A collection of HTMX examples combinded with django."
-authors = ["Andreas Zweili <andreas@zweili.ch>"]
-license = "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)"
-readme = "README.md"
-packages = [{include = "src"}]
-
-[tool.mypy]
-exclude = [
-    "tests/",
+authors = [
+    {name = "Andreas Zweili", email = "andreas@zweili.ch"},
 ]
-plugins = ["mypy_django_plugin.main"]
-mypy_path = "./src"
-# Start off with these
-warn_unused_configs = true
-warn_redundant_casts = true
-warn_unused_ignores = true
+license = "GPL-3.0-or-later"
+readme = {file = "README.org", content-type = "text/plain"}
 
-# Getting these passing should be easy
-strict_equality = true
+[tool.hatch.build.targets.wheel]
+packages = [
+  "src/examples/",
+  "src/htmx_examples/",
+]
 
-# Strongly recommend enabling this one as soon as you can
-check_untyped_defs = true
-
-# These shouldn't be too much additional work, but may be tricky to
-# get passing if you use a lot of untyped libraries
-disallow_subclassing_any = true
-disallow_untyped_decorators = true
-disallow_any_generics = true
-
-# These next few are various gradations of forcing use of type annotations
-disallow_untyped_calls = true
-disallow_incomplete_defs = true
-disallow_untyped_defs = true
-
-# This one isn't too hard to get passing, but return on investment is lower
-no_implicit_reexport = true
-
-# This one can be tricky to get passing if you use a lot of untyped libraries
-warn_return_any = true
+[tool.black]
+line-length = 88
+extend-exclude = '''
+/(
+  # Directories
+  \..*
+  | migrations
+)/
+'''
 
 [tool.django-stubs]
 django_settings_module = "htmx_examples"
 
-[tool.poetry.group.main.dependencies]
-python = "^3.10"
-django = "^4.2.3"
-django-htmx = "^1.16.0"
-gunicorn = "^21.2.0"
-psycopg2-binary = "^2.9.6"
+[tool.docformatter]
+black=true
+exclude = ["migrations"]
 
-[tool.poetry.group.dev.dependencies]
-pylint = "^2.17.4"
-mypy = "^1.4.1"
-python-lsp-server = "^1.7.4"
-black = "^23.7.0"
-django-stubs = "^4.2.3"
-pylint-django = "^2.5.3"
+[tool.isort]
+extend_skip_glob = ["*/.*", "*/migrations/*"]
+force_single_line = true
+profile="black"
 
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.mypy]
+exclude = [
+    "migrations",
+]
+plugins = ["mypy_django_plugin.main"]
+strict = true
+
+[tool.pylint.main]
+recursive = true
+ignore = ["migrations"]
+load-plugins = ["pylint_django"]
+
+[tool.pylint.django]
+django-settings-module = "htmx_examples.settings"
+
+[tool.ruff]
+exclude = [
+  "migrations",
+]
+src = [
+    "src",
+    "tests",
+]
+line-length = 88
+
+[tool.ruff.lint]
+fixable = ["ALL"]
+select = [ "ALL" ]
+ignore = [
+    "COM812", # trailing commas, black takes care of this
+    "ANN",    # type annotations, mypy takes care of this
+    "I001",   # import sorting, isort takes care of this
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**/*.py" = [
+  "D102",
+  "S101",  # Use of assert detected, we use pytest so kind of obvious
+  "S106",  # Dummy passwords for tests
+]
+"tooling/**/*.py" = [
+  "INP001",  # Tooling scripts don't need __init__.py
+]
+
+[tool.ruff.lint.pydocstyle]
+convention = "pep257"
+
+[tool.vulture]
+exclude = ["src/*/migrations/*.py"]
+min_confidence = 100
+paths = ["src/", "tests/"]
+sort_by_size = true
+
+[tool.coverage.run]
+omit = [
+    "**/migrations/*",
+    "src/manage.py",
+    "src/zweili_search/asgi.py",
+    "src/zweili_search/wsgi.py",
+]
+[tool.pytest.ini_options]
+addopts = [
+    "--cov=src",
+    "--strict-markers",
+    "--strict-config",
+]
