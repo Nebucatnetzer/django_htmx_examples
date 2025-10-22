@@ -1,32 +1,63 @@
 {
-  description = "A Python API for various tools I use at work.";
   inputs = {
+    devenv-root = {
+      url = "file+file:///dev/null";
+      flake = false;
+    };
+    flake-parts.url = "github:hercules-ci/flake-parts";
+    flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    systems.url = "github:nix-systems/default";
     devenv.url = "github:cachix/devenv?ref=v1.8";
   };
   outputs =
-    {
-      self,
-      nixpkgs,
-      devenv,
-      systems,
-    }@inputs:
-    let
-      forEachSystem = nixpkgs.lib.genAttrs (import systems);
-    in
-    {
-      packages = forEachSystem (system: {
-        devenv-up = self.devShells.${system}.default.config.procfileScript;
-      });
-      devShells = forEachSystem (
-        system:
+    { flake-parts, ... }@inputs:
+    flake-parts.lib.mkFlake { inherit inputs; } {
+      imports = [
+        inputs.devenv.flakeModule
+      ];
+      systems = [
+        "x86_64-linux"
+        "aarch64-linux"
+      ];
+      perSystem =
+        {
+          config,
+          pkgs,
+          ...
+        }:
         let
-          pkgs = nixpkgs.legacyPackages.${system};
-          pyproject = pkgs.lib.importTOML ./pyproject.toml;
+          nginxConfig = pkgs.writeText "nginx.conf" ''
+            user nobody nobody;
+            daemon off;
+            error_log /dev/stdout info;
+            pid /dev/null;
+            worker_processes auto;
+            events {}
+            http {
+                types_hash_max_size 4096;
+                include ${pkgs.mailcap}/etc/nginx/mime.types;
+                upstream app {
+                    server zweili-search-app:8000;
+                }
+
+                server {
+                    listen 80;
+                    location / {
+                        proxy_pass http://app;
+                        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+                        proxy_set_header Host $host;
+                        proxy_redirect off;
+                    }
+
+                    location /static/ {
+                        alias ${staticFiles}/static/;
+                    }
+                }
+            }
+          '';
           myPython = pkgs.python312.override {
             self = myPython;
-            packageOverrides = pyfinal: pyprev: {
+            packageOverrides = pyfinal: _pyprev: {
               htmx-examples = pyfinal.buildPythonPackage {
                 pname = "htmx-examples";
                 inherit (pyproject.project) version;
@@ -46,7 +77,7 @@
               };
             };
           };
-          pythonPod = myPython.withPackages (p: [
+          pythonProd = myPython.withPackages (p: [
             p.django
             p.django-htmx
             p.gunicorn
@@ -73,35 +104,110 @@
             p.python-lsp-ruff
             p.python-lsp-server
           ]);
+          pyproject = pkgs.lib.importTOML ./pyproject.toml;
+          staticFiles = pkgs.stdenv.mkDerivation {
+            pname = "${pyproject.project.name}-static";
+            version = pyproject.project.version;
+            src = ./.;
+            buildPhase = ''
+              export HTMX_EXAMPLES_DB_DIR="$out"
+              export DJANGO_SETTINGS_MODULE=htmx_examples.settings
+              export MEDIA_ROOT=/dev/null
+              export SECRET_KEY=dummy
+              export DATABASE_URL=sqlite://:memory:
+              ${pythonProd.interpreter} -m django collectstatic --noinput
+            '';
+            phases = [ "buildPhase" ];
+          };
         in
         {
-          default = devenv.lib.mkShell {
-            inherit inputs pkgs;
-            modules = [
-              {
-                packages = [
-                  (pkgs.writeScriptBin "dev" "${builtins.readFile ./dev.sh}")
-                  pythonDev
+          packages = {
+            inherit pythonProd;
+            ci-tools = pkgs.buildEnv {
+              name = "ci-tools";
+              paths = [
+                pkgs.skopeo
+                pkgs.manifest-tool
+              ];
+              pathsToLink = [ "/bin" ];
+            };
+            app-image = pkgs.dockerTools.buildImage {
+              name = "htmx-example-app";
+              tag = "latest";
+              architecture = "linux/arm64";
+              copyToRoot = pkgs.buildEnv {
+                name = "image-root";
+                paths = [
+                  pythonProd
                 ];
-                env = {
-                  DJANGO_SETTINGS_MODULE = "htmx_examples.settings";
+              };
+              config = {
+                Cmd = [
+                  "${pythonProd.interpreter}"
+                  ./docker-cmd.py
+                ];
+                Env = [
+                  "DJANGO_SETTINGS_MODULE=htmx_examples.settings"
+                ];
+                ExposedPorts = {
+                  "8000/tcp" = { };
                 };
-                process.implementation = "process-compose";
-                process-managers.process-compose.enable = true;
-                # https://github.com/cachix/devenv/blob/main/examples/process-compose/devenv.nix
-                processes = {
-                  webserver.exec = "$DEVENV_ROOT/src/manage.py runserver 0.0.0.0:8000";
-                  setup.exec = "dev setup";
+              };
+            };
+            nginx-image = pkgs.dockerTools.buildLayeredImage {
+              name = "htmx-example-nginx";
+              tag = "latest";
+              contents = [
+                pkgs.fakeNss
+                pkgs.nginx
+              ];
+
+              extraCommands = ''
+                mkdir -p tmp/nginx_client_body
+
+                # nginx still tries to read this directory even if error_log
+                # directive is specifying another file :/
+                mkdir -p var/log/nginx
+              '';
+
+              config = {
+                Cmd = [
+                  "nginx"
+                  "-c"
+                  nginxConfig
+                ];
+                ExposedPorts = {
+                  "80/tcp" = { };
                 };
-                services.postgres = {
-                  enable = true;
-                  initialDatabases = [ { name = "django"; } ];
-                  package = pkgs.postgresql_15;
-                };
-              }
-            ];
+              };
+            };
           };
-        }
-      );
+          devenv.shells.default = {
+            name = "foo";
+            packages = [
+              (pkgs.writeScriptBin "dev" "${builtins.readFile ./tooling/bin/dev.sh}")
+              pythonDev
+              pkgs.deadnix
+              pkgs.nixfmt-rfc-style
+            ];
+            env = {
+              DJANGO_SETTINGS_MODULE = "htmx_examples.settings";
+              HTMX_EXAMPLES_DB_DIR = "${config.devenv.shells.default.env.DEVENV_STATE}/htmx";
+              SECRET_KEY = "foo";
+            };
+            process.manager.implementation = "process-compose";
+            process.managers.process-compose.enable = true;
+            # https://github.com/cachix/devenv/blob/main/examples/process-compose/devenv.nix
+            processes = {
+              webserver.exec = "$DEVENV_ROOT/src/manage.py runserver 0.0.0.0:8000";
+              setup.exec = "dev setup";
+            };
+            services.postgres = {
+              enable = true;
+              initialDatabases = [ { name = "django"; } ];
+              package = pkgs.postgresql_15;
+            };
+          };
+        };
     };
 }

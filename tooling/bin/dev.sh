@@ -45,7 +45,7 @@ descriptions["setup"]="Setup the database."
 tasks["setup"]=setup
 
 run() {
-    devenv up
+    process-compose up
 }
 descriptions["run"]="Start the webserver."
 tasks["run"]=run
