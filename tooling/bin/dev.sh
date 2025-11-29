@@ -28,7 +28,7 @@ setup() {
     sleep 5
     pushd $(pwd)
     cd $DEVENV_ROOT
-    if [ -f .direnv/first_run ]; then
+    if [ -f .devenv/state/first_run ]; then
         ./src/manage.py collectstatic --noinput
         ./src/manage.py makemigrations
         ./src/manage.py migrate
@@ -38,7 +38,8 @@ setup() {
         ./src/manage.py migrate
         ./src/manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@example.com', 'password')"
     fi
-    touch .direnv/first_run
+    mkdir -p .devenv/state
+    touch .devenv/state/first_run
     popd
 }
 descriptions["setup"]="Setup the database."
