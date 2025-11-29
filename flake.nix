@@ -199,8 +199,14 @@
             process.managers.process-compose.enable = true;
             # https://github.com/cachix/devenv/blob/main/examples/process-compose/devenv.nix
             processes = {
-              webserver.exec = "$DEVENV_ROOT/src/manage.py runserver 0.0.0.0:8000";
-              setup.exec = "dev setup";
+              webserver = {
+                process-compose.depends_on.setup.condition = "process_completed_successfully";
+                exec = "$DEVENV_ROOT/src/manage.py runserver 0.0.0.0:8000";
+              };
+              setup = {
+                process-compose.depends_on.postgres.condition = "process_started";
+                exec = "dev setup";
+              };
             };
             services.postgres = {
               enable = true;
