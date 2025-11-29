@@ -2,25 +2,6 @@
 
 # Helper functions not exposed to the user {
 
-# Setup the database
-_setup() {
-    overmind start -l db -D
-    sleep 2
-    if [ -f .direnv/first_run ]; then
-        python ./src/manage.py collectstatic --noinput
-        python ./src/manage.py makemigrations
-        python ./src/manage.py migrate
-    else
-        python ./src/manage.py collectstatic --noinput
-        python ./src/manage.py makemigrations
-        python ./src/manage.py migrate
-        python ./src/manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@example.com', 'password')"
-        touch .direnv/first_run
-    fi
-    overmind quit
-    sleep 2
-}
-
 _open_url() {
     if [[ ! -z "${DEFAULT_BROWSER}" ]]; then
         $DEFAULT_BROWSER $url
@@ -42,24 +23,35 @@ _create_url() {
 declare -A tasks
 declare -A descriptions
 
+# Setup the database
+setup() {
+    sleep 5
+    pushd $(pwd)
+    cd $DEVENV_ROOT
+    if [ -f .devenv/state/first_run ]; then
+        ./src/manage.py collectstatic --noinput
+        ./src/manage.py makemigrations
+        ./src/manage.py migrate
+    else
+        ./src/manage.py collectstatic --noinput
+        ./src/manage.py makemigrations
+        ./src/manage.py migrate
+        ./src/manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@example.com', 'password')"
+    fi
+    mkdir -p .devenv/state
+    touch .devenv/state/first_run
+    popd
+}
+descriptions["setup"]="Setup the database."
+tasks["setup"]=setup
+
 run() {
-    _setup
-    url=$(_create_url)
-    sudo iptables -I INPUT -p tcp --dport $WEBPORT -j ACCEPT
-    printf "\n---\n webserver: $url\n---\n"
-    overmind start -D
-    _open_url $url
+    process-compose up
 }
 descriptions["run"]="Start the webserver."
 tasks["run"]=run
 descriptions["start"]="Alias for run."
 tasks["start"]=run
-
-stop() {
-    overmind quit
-}
-descriptions["stop"]="Stop the webserver and DB."
-tasks["stop"]=stop
 
 clean() {
     find . \( -name __pycache__ -o -name "*.pyc" \) -delete
@@ -76,12 +68,6 @@ cleanall() {
 }
 descriptions["cleanall"]="Completly remove any files which are not checked into git."
 tasks["cleanall"]=cleanall
-
-update() {
-    poetry update
-}
-descriptions["update"]="Update the dependencies."
-tasks["update"]=update
 
 # only one task at a time
 if [ $# != 1 ]; then

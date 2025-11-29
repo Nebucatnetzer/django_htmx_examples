@@ -10,9 +10,9 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/4.2/ref/settings/
 """
 
-from pathlib import Path
-
 import os
+import socket
+from pathlib import Path
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -22,12 +22,38 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-9+f744v*txazsa(8j#9du4p&x6%cvxyv+-)^v@h+a7kksn=9vh"
+SECRET_KEY = os.getenv("SECRET_KEY")
+if not SECRET_KEY:
+    msg = (
+        "SECRET_KEY environment variable is required. "
+        "Please set a secure SECRET_KEY environment variable."
+    )
+    raise ValueError(msg)
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.getenv("DEBUG", None)
+HTMX_EXAMPLES_DB_DIR = Path(
+    os.getenv("HTMX_EXAMPLES_DB_DIR", "/var/lib/htmx_examples/"),
+)
+HTMX_EXAMPLES_DOMAIN = os.getenv("HTMX_EXAMPLES_DOMAIN", socket.getfqdn())
+HTMX_EXAMPLES_STATIC_ROOT = Path(
+    os.getenv("HTMX_EXAMPLES_DB_DIR", "/var/lib/htmx_examples/"),
+)
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [
+    "localhost",
+    "localhost:8000",
+    "127.0.0.1",
+    socket.getfqdn(),
+    socket.gethostname(),
+    socket.gethostbyname(socket.gethostname()),
+    HTMX_EXAMPLES_DOMAIN,
+]
+
+CSRF_TRUSTED_ORIGINS = [f"https://{HTMX_EXAMPLES_DOMAIN}"]
+
+if DEBUG:
+    CSRF_TRUSTED_ORIGINS.append("http://localhost:8000")
 
 # Application definition
 
@@ -39,6 +65,7 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
     "django_htmx",
+    "examples",
 ]
 
 MIDDLEWARE = [
@@ -50,6 +77,8 @@ MIDDLEWARE = [
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
+
+AUTH_USER_MODEL = "examples.User"
 
 ROOT_URLCONF = "htmx_examples.urls"
 
@@ -102,6 +131,7 @@ AUTH_PASSWORD_VALIDATORS = [
         "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
     },
 ]
+SESSION_SAVE_EVERY_REQUEST = True
 
 
 # Internationalization
@@ -109,7 +139,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = "en-us"
 
-TIME_ZONE = "UTC"
+TIME_ZONE = "Europe/Zurich"
 
 USE_I18N = True
 
@@ -120,7 +150,7 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
 STATIC_URL = "static/"
-STATIC_ROOT = os.path.join(BASE_DIR, "..", "static")
+STATIC_ROOT = HTMX_EXAMPLES_STATIC_ROOT.joinpath("static")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field

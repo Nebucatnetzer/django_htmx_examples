@@ -1,0 +1,7 @@
+* NEXT [#A] Refactor to use only Nixpkgs
+
+- [X] Build static files -> Get root from environment
+- [ ] Setup process-compose
+  https://github.com/juspay/todo-app/blob/8d155465bfa54c979b948665fcd9ccaed0644e92/flake.nix
+
+* NEXT Finish the first example
