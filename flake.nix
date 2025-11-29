@@ -55,7 +55,7 @@
                 }
             }
           '';
-          myPython = pkgs.python312.override {
+          myPython = pkgs.python3.override {
             self = myPython;
             packageOverrides = pyfinal: _pyprev: {
               htmx-examples = pyfinal.buildPythonPackage {
