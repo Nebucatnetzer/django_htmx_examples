@@ -1,7 +1,24 @@
-* NEXT [#A] Refactor to use only Nixpkgs
+* NEXT Replace devenv
+** NEXT get working directory
 
-- [X] Build static files -> Get root from environment
-- [ ] Setup process-compose
-  https://github.com/juspay/todo-app/blob/8d155465bfa54c979b948665fcd9ccaed0644e92/flake.nix
+#+begin_src nix
+DEVENV_ROOT = builtins.readFile inputs.devenv-root.outPath;
+DEVENV_STATE = "${config.devenv.shells.default.env.DEVENV_ROOT}/state";
+#+end_src
+
+** NEXT Setup process-compose with flake-parts
+
+https://github.com/juspay/todo-app/blob/8d155465bfa54c979b948665fcd9ccaed0644e92/flake.nix
+
+** NEXT Test devenv modules with flake-parts
+
+Devenv has a large collection of services and other nice things. Maybe it is possible to use them together with flake parts.
 
 * NEXT Finish the first example
+
+* Finished tasks
+** DONE [#A] Refactor to use only Nixpkgs
+CLOSED: [2025-11-29 Sat 19:00]
+
+- [X] Build static files -> Get root from environment
+
