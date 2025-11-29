@@ -1,31 +1,25 @@
 {
   inputs = {
-    devenv-root = {
-      url = "file+file:///dev/null";
-      flake = false;
-    };
     flake-parts.url = "github:hercules-ci/flake-parts";
     flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    devenv.url = "github:cachix/devenv?ref=v1.8";
+    process-compose-flake.url = "github:Platonic-Systems/process-compose-flake";
+    services-flake.url = "github:juspay/services-flake";
   };
   outputs =
     { flake-parts, ... }@inputs:
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
-        inputs.devenv.flakeModule
+        inputs.process-compose-flake.flakeModule
       ];
       systems = [
         "x86_64-linux"
         "aarch64-linux"
       ];
       perSystem =
-        {
-          config,
-          pkgs,
-          ...
-        }:
+        { pkgs, ... }:
         let
+          devScript = pkgs.writeScriptBin "dev" "${builtins.readFile ./tooling/bin/dev.sh}";
           nginxConfig = pkgs.writeText "nginx.conf" ''
             user nobody nobody;
             daemon off;
@@ -119,6 +113,7 @@
             '';
             phases = [ "buildPhase" ];
           };
+          WEBPORT = 8080;
         in
         {
           packages = {
@@ -182,37 +177,51 @@
               };
             };
           };
-          devenv.shells.default = {
-            name = "foo";
+          process-compose."dev-services" = {
+            imports = [
+              inputs.services-flake.processComposeModules.default
+              ./tooling/nix/modules/services.nix
+            ];
+            cli = {
+              # environment.PC_DISABLE_TUI = true;
+              # Global options for `process-compose`
+              options = {
+                no-server = true;
+              };
+            };
+            settings = {
+              processes = {
+                webserver = {
+                  # process-compose.depends_on.setup.condition = "process_completed_successfully";
+                  command = "$DEVENV_ROOT/src/manage.py runserver 0.0.0.0:${builtins.toString WEBPORT}";
+                };
+                setup = {
+                  # process-compose.depends_on.postgres.condition = "process_started";
+                  command = "${devScript}/bin/dev setup";
+                };
+              };
+            };
+          };
+          devShells.default = pkgs.mkShellNoCC {
             packages = [
-              (pkgs.writeScriptBin "dev" "${builtins.readFile ./tooling/bin/dev.sh}")
+              devScript
               pythonDev
               pkgs.deadnix
               pkgs.nixfmt-rfc-style
             ];
             env = {
               DJANGO_SETTINGS_MODULE = "htmx_examples.settings";
-              HTMX_EXAMPLES_DB_DIR = "${config.devenv.shells.default.env.DEVENV_STATE}/htmx";
               SECRET_KEY = "foo";
+              PGHOST = "localhost";
+              PGPORT = 5432;
+              inherit WEBPORT;
             };
-            process.manager.implementation = "process-compose";
-            process.managers.process-compose.enable = true;
-            # https://github.com/cachix/devenv/blob/main/examples/process-compose/devenv.nix
-            processes = {
-              webserver = {
-                process-compose.depends_on.setup.condition = "process_completed_successfully";
-                exec = "$DEVENV_ROOT/src/manage.py runserver 0.0.0.0:8000";
-              };
-              setup = {
-                process-compose.depends_on.postgres.condition = "process_started";
-                exec = "dev setup";
-              };
-            };
-            services.postgres = {
-              enable = true;
-              initialDatabases = [ { name = "django"; } ];
-              package = pkgs.postgresql_15;
-            };
+            shellHook = ''
+              export DEVENV_ROOT=$(git rev-parse --show-toplevel)
+              export DEVENV_STATE="$DEVENV_ROOT/.devenv/state"
+              export HTMX_EXAMPLES_DB_DIR="$DEVENV_STATE/htmx_db"
+              mkdir -p $DEVENV_STATE
+            '';
           };
         };
     };

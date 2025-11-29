@@ -3,10 +3,11 @@
 # Helper functions not exposed to the user {
 
 _open_url() {
-    if [[ ! -z "${DEFAULT_BROWSER}" ]]; then
-        $DEFAULT_BROWSER $url
+    url=$(_create_url)
+    if [[ -n "${DEFAULT_BROWSER}" ]]; then
+        $DEFAULT_BROWSER "$url"
     elif type explorer.exe &>/dev/null; then
-        explorer.exe $url
+        explorer.exe "$url"
     fi
 }
 
@@ -26,8 +27,7 @@ declare -A descriptions
 # Setup the database
 setup() {
     sleep 5
-    pushd $(pwd)
-    cd $DEVENV_ROOT
+    cd "$DEVENV_ROOT" || exit
     if [ -f .devenv/state/first_run ]; then
         ./src/manage.py collectstatic --noinput
         ./src/manage.py makemigrations
@@ -40,13 +40,14 @@ setup() {
     fi
     mkdir -p .devenv/state
     touch .devenv/state/first_run
-    popd
+    _open_url
 }
 descriptions["setup"]="Setup the database."
 tasks["setup"]=setup
 
 run() {
-    process-compose up
+    cd "$DEVENV_ROOT" || exit
+    nix run .#dev-services
 }
 descriptions["run"]="Start the webserver."
 tasks["run"]=run
