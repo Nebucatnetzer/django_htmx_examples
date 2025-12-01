@@ -11,6 +11,7 @@
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
         inputs.process-compose-flake.flakeModule
+        ./tooling/nix/modules/pkgs.nix
       ];
       systems = [
         "x86_64-linux"
