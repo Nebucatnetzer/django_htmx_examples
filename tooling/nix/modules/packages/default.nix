@@ -35,6 +35,7 @@ let
     p.django-htmx
     p.gunicorn
     p.psycopg2-binary
+    p.htmx-examples
   ]);
   staticFiles = pkgs.stdenv.mkDerivation {
     pname = "${pyproject.project.name}-static";
