@@ -6,13 +6,20 @@ DEVENV_ROOT = builtins.readFile inputs.devenv-root.outPath;
 DEVENV_STATE = "${config.devenv.shells.default.env.DEVENV_ROOT}/state";
 #+end_src
 
-** NEXT Setup process-compose with flake-parts
+Currently I'm doing this as part of the ~shellHook~. It isn't ideal but using it as part of the flake input causes Nix to re-evaluate things all the time even when there isn't really anything that changed.
 
-https://github.com/juspay/todo-app/blob/8d155465bfa54c979b948665fcd9ccaed0644e92/flake.nix
+** TODO Add dependencies between the processes
+
+At the moment all the processes are starting at the same time which is causes some of them too fail.
+Some of them have to wait on each other.
 
 ** NEXT Test devenv modules with flake-parts
 
 Devenv has a large collection of services and other nice things. Maybe it is possible to use them together with flake parts.
+
+** NEXT Migrate stuff into modules
+
+Learn flake-parts better
 
 * NEXT Finish the first example
 
@@ -21,4 +28,9 @@ Devenv has a large collection of services and other nice things. Maybe it is pos
 CLOSED: [2025-11-29 Sat 19:00]
 
 - [X] Build static files -> Get root from environment
+
+** DONE Setup process-compose with flake-parts
+CLOSED: [2025-11-30 Sun 15:32]
+
+https://github.com/juspay/todo-app/blob/8d155465bfa54c979b948665fcd9ccaed0644e92/flake.nix
 
