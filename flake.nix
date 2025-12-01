@@ -2,6 +2,7 @@
   inputs = {
     flake-parts.url = "github:hercules-ci/flake-parts";
     flake-parts.inputs.nixpkgs-lib.follows = "nixpkgs";
+    nix-libs.url = "git+ssh://git@git.2li.ch/Nebucatnetzer/nix-libs.git";
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     process-compose-flake.url = "github:Platonic-Systems/process-compose-flake";
     services-flake.url = "github:juspay/services-flake";
@@ -11,7 +12,7 @@
     flake-parts.lib.mkFlake { inherit inputs; } {
       imports = [
         inputs.process-compose-flake.flakeModule
-        ./tooling/nix/modules/pkgs.nix
+        inputs.nix-libs.lib.pkgs-ouput
       ];
       systems = [
         "x86_64-linux"
