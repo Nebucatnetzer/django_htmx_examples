@@ -48,7 +48,10 @@
           imports = [
             (import ./tooling/nix/modules/dev_shell.nix { inherit myPython WEBPORT; })
             (import ./tooling/nix/modules/packages { inherit myPython pyproject; })
-            (import ./tooling/nix/modules/process-compose { inherit WEBPORT; })
+            (import ./tooling/nix/modules/process-compose {
+              servicesFlake = inputs.services-flake.processComposeModules.default;
+              inherit WEBPORT;
+            })
           ];
         };
     };

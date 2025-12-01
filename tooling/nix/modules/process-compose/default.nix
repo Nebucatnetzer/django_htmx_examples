@@ -1,9 +1,9 @@
-{ WEBPORT, ... }:
-{ config, inputs, ... }:
+{ servicesFlake, WEBPORT, ... }:
+{ config, ... }:
 {
   process-compose."dev-services" = {
     imports = [
-      inputs.services-flake.processComposeModules.default
+      servicesFlake
       ./services.nix
     ];
     cli = {
