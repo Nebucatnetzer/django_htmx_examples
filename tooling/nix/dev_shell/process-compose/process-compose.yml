@@ -1,0 +1,12 @@
+version: "0.5"
+
+log_location: process-compose/logfile.log
+log_level: debug
+
+processes:
+  db:
+    command: "start-postgres"
+  webserver:
+    command: "$DEVENV_ROOT/src/manage.py runserver 0.0.0.0:$WEBPORT"
+  setup:
+    command: "dev setup"
