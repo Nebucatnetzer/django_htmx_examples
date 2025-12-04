@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 
-# Helper functions not exposed to the user {
+DEVENV_ROOT=$(git rev-parse --show-toplevel)
+DEVENV_STATE="$DEVENV_ROOT/.devenv/state"
 
 _open_url() {
     url=$(_create_url)
@@ -39,7 +40,7 @@ setup() {
         ./src/manage.py shell -c "from django.contrib.auth import get_user_model; User = get_user_model(); User.objects.create_superuser('admin', 'admin@example.com', 'password')"
     fi
     mkdir -p .devenv/state
-    touch .devenv/state/first_run
+    touch "$DEVENV_STATE"/first_run
     _open_url
 }
 descriptions["setup"]="Setup the database."
@@ -47,28 +48,21 @@ tasks["setup"]=setup
 
 run() {
     cd "$DEVENV_ROOT" || exit
-    nix run .#dev-services
+    mkdir --parents "$DEVENV_STATE"
+    nix run .#process-compose
 }
 descriptions["run"]="Start the webserver."
 tasks["run"]=run
 descriptions["start"]="Alias for run."
 tasks["start"]=run
 
-clean() {
+reset() {
     find . \( -name __pycache__ -o -name "*.pyc" \) -delete
-    rm -f .direnv/first_run
-    rm -f src/*/migrations/0*.py
-    rm -rf .direnv/postgres/
-    rm -rf .venv/
+    rm -f "$DEVENV_STATE"/first_run
+    rm -rf "$DEVENV_STATE"/postgres/
 }
-descriptions["clean"]="Reset the project to a fresh state including the database."
-tasks["clean"]=clean
-
-cleanall() {
-    git clean -xdf
-}
-descriptions["cleanall"]="Completly remove any files which are not checked into git."
-tasks["cleanall"]=cleanall
+descriptions["reset"]="Reset the project to a fresh state including the database."
+tasks["reset"]=reset
 
 # only one task at a time
 if [ $# != 1 ]; then
